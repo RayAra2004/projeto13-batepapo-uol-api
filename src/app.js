@@ -59,4 +59,14 @@ app.post('/participants', async (req, res) =>{
     }
 });
 
+app.get('/participants', async (req, res) => {
+    try{
+        const participants = await db.collection('participants').find().toArray();
+        res.send(participants);
+    }catch(err){
+        res.sendStatus(500);
+    }
+    
+})
+
 app.listen(PORT, ()=> console.log(`Servidor rondando na porta ${PORT}`));
