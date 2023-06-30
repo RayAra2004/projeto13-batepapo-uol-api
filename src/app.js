@@ -67,7 +67,7 @@ app.get('/participants', async (req, res) => {
         res.sendStatus(500);
     }
     
-})
+});
 
 app.post('/messages', async (req, res) => {
     const { user } = req.headers;
@@ -96,6 +96,46 @@ app.post('/messages', async (req, res) => {
     }
 
     res.sendStatus(201);
-})
+});
+
+app.get('/messages', async (req, res) =>{
+    const {user} = req.headers;
+    let {limit} = req.query;
+
+    
+
+    const limitSchema = joi.object({
+    limit: joi.number().integer().positive().allow()
+    })
+
+    const validation = limitSchema.validate({limit});
+
+    if(validation.error){
+        console.log(validation.error)
+        return res.sendStatus(422);
+    }
+
+    limit = parseInt(limit)
+    
+    const messages = await db.collection('messages').find(
+        {$or: [
+            {from: user},
+            {to: "Todos"},
+            {to: user},
+            {type: "message"}
+        ]}).toArray();
+
+    let messagesRes;
+    if(limit !== undefined){
+        messagesRes = messages.slice(-limit).reverse();
+    }else{
+        messagesRes = [...messages].reverse();
+    }
+    
+
+    res.send(messagesRes);
+});
+
+
 
 app.listen(PORT, ()=> console.log(`Servidor rondando na porta ${PORT}`));
