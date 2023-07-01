@@ -25,6 +25,29 @@ try{
 
 const db = mongoClient.db();
 
+setInterval(async () => {
+    const timeLimit = Date.now() - 10000;
+    const usersInactive = await db.collection('participants').find({lastStatus: {$lte: timeLimit}}).toArray()
+
+    for (const user of usersInactive){
+        const newMessage  = {
+            from: user.name,
+            to: 'Todos',
+            text: 'sai da sala...',
+            type: 'status',
+            time: dayjs().locale("pt").format("HH:mm:ss")
+        }
+
+        try{
+            await db.collection('messages').insertOne(newMessage);
+            await db.collection('participants').deleteOne({name: user.name})
+        }catch(err){
+            return
+        }
+    }
+    console.log(usersInactive)
+    }, 15000)
+
 app.post('/participants', async (req, res) =>{
     const { name } = req.body;
 
@@ -151,7 +174,7 @@ app.post('/status', async (req, res) =>{
         );
 
         if(result.matchedCount === 0) return res.sendStatus(404);
-        
+
         res.sendStatus(200)
     }catch(err){
         res.sendStatus(500);
