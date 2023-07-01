@@ -41,7 +41,7 @@ app.post('/participants', async (req, res) =>{
         const userExist = await db.collection('participants').findOne({name: name});
         if(userExist) return res.sendStatus(409);
         
-        db.collection('participants').insertOne({name: name, lastStatus: Date.now()});
+        await db.collection('participants').insertOne({name: name, lastStatus: Date.now()});
 
         const newMessage = {
             from: name,
@@ -51,7 +51,7 @@ app.post('/participants', async (req, res) =>{
             time: dayjs().locale("pt").format("HH:mm:ss")
         }
 
-        db.collection('messages').insertOne(newMessage);
+        await db.collection('messages').insertOne(newMessage);
 
         res.sendStatus(201);
     }catch(err){
@@ -76,7 +76,7 @@ app.post('/messages', async (req, res) => {
     const userSchema = joi.object({
         to: joi.string().required(),
         text: joi.string().required(),
-        type: joi.string().valid('message', 'private_message'),
+        type: joi.string().valid('message', 'private_message').required(),
         from: joi.string().required()
     });
 
@@ -90,7 +90,7 @@ app.post('/messages', async (req, res) => {
             return res.sendStatus(422);
         }
         newMessage.time = dayjs().locale("pt").format("HH:mm:ss");
-        db.collection('messages').insertOne(newMessage);
+        await db.collection('messages').insertOne(newMessage);
     } catch(err){
         return res.sendStatus(500);
     }
@@ -116,26 +116,46 @@ app.get('/messages', async (req, res) =>{
     }
 
     limit = parseInt(limit)
+    try{
+        const messages = await db.collection('messages').find(
+            {$or: [
+                {from: user},
+                {to: "Todos"},
+                {to: user},
+                {type: "message"}
+            ]}).toArray();
     
-    const messages = await db.collection('messages').find(
-        {$or: [
-            {from: user},
-            {to: "Todos"},
-            {to: user},
-            {type: "message"}
-        ]}).toArray();
-
-    let messagesRes;
-    if(limit !== undefined){
-        messagesRes = messages.slice(-limit).reverse();
-    }else{
-        messagesRes = [...messages].reverse();
+        let messagesRes;
+        if(limit !== undefined){
+            messagesRes = messages.slice(-limit).reverse();
+        }else{
+            messagesRes = [...messages].reverse();
+        }
+        
+        res.send(messagesRes);
+    }catch(err){
+        res.sendStatus(500);
     }
     
-
-    res.send(messagesRes);
 });
 
+app.post('/status', async (req, res) =>{
+    const {user} = req.headers;
 
+    if(user === undefined) return res.sendStatus(404);
+
+    try{
+        const result = await db.collection('participants').updateOne(
+            {name: user},
+            {$set: {name: user, lastStatus: Date.now()}}
+        );
+
+        if(result.matchedCount === 0) return res.sendStatus(404);
+        
+        res.sendStatus(200)
+    }catch(err){
+        res.sendStatus(500);
+    }
+});
 
 app.listen(PORT, ()=> console.log(`Servidor rondando na porta ${PORT}`));
