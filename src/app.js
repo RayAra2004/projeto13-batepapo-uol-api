@@ -5,6 +5,8 @@ import { MongoClient } from "mongodb";
 import joi from 'joi';
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br.js";
+import {strict as assert} from "assert";
+import { stripHtml } from "string-strip-html";
 
 dotenv.config();
 
@@ -45,11 +47,10 @@ setInterval(async () => {
             return
         }
     }
-    console.log(usersInactive)
     }, 15000)
 
 app.post('/participants', async (req, res) =>{
-    const { name } = req.body;
+    const name  = stripHtml(req.body.name).result.trim();
 
     const userSchema = joi.object({
         name: joi.string().required()
@@ -93,8 +94,10 @@ app.get('/participants', async (req, res) => {
 });
 
 app.post('/messages', async (req, res) => {
-    const { user } = req.headers;
-    const {to, text, type} = req.body;
+    const user = stripHtml(req.headers.name).result.trim();
+    const to = stripHtml(req.body.to).result.trim();
+    const text = stripHtml(req.body.text).result.trim();
+    const type = stripHtml(req.body.type).result.trim();
 
     const userSchema = joi.object({
         to: joi.string().required(),
@@ -122,10 +125,9 @@ app.post('/messages', async (req, res) => {
 });
 
 app.get('/messages', async (req, res) =>{
-    const {user} = req.headers;
-    let {limit} = req.query;
+    const user = stripHtml(req.headers.user).result.trim();
+    let limit = stripHtml(req.query.limit).result.trim();
 
-    
 
     const limitSchema = joi.object({
     limit: joi.number().integer().positive().allow()
@@ -163,7 +165,7 @@ app.get('/messages', async (req, res) =>{
 });
 
 app.post('/status', async (req, res) =>{
-    const {user} = req.headers;
+    const user = stripHtml(req.headers.user).result.trim();
 
     if(user === undefined) return res.sendStatus(404);
 
