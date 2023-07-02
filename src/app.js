@@ -108,11 +108,9 @@ app.post('/messages', async (req, res) => {
     });
 
     const newMessage = {to, text, type, from: user};
-    console.log(newMessage)
     const validation = userSchema.validate(newMessage);
 
     if(validation.error){
-        console.log(validation.error)
         return res.sendStatus(422);
     }
 
@@ -175,9 +173,8 @@ app.get('/messages', async (req, res) =>{
 });
 
 app.post('/status', async (req, res) =>{
+    if(req.headers.user === undefined) return res.sendStatus(404);
     const user = stripHtml(req.headers.user).result.trim();
-
-    if(user === undefined) return res.sendStatus(404);
 
     try{
         const result = await db.collection('participants').updateOne(
@@ -194,7 +191,7 @@ app.post('/status', async (req, res) =>{
 });
 
 app.delete('/messages/:id', async (req, res) =>{
-    if((req.headers.user) === undefined) return res.sendStatus(422);
+    if(req.headers.user === undefined || req.params.id === undefined) return res.sendStatus(422);
     const user = stripHtml(req.headers.user).result.trim();
     const id = stripHtml(req.params.id).result.trim();
     try{
@@ -203,6 +200,43 @@ app.delete('/messages/:id', async (req, res) =>{
         if(message[0].from !== user) return res.sendStatus(401);
         await db.collection('messages').deleteOne({_id: new ObjectId(id)});
         res.sendStatus(204)
+    }catch(err){
+        res.sendStatus(500);
+    }
+});
+
+app.put('/messages/:id', async (req, res) =>{
+    let user = req.headers.user;
+    let to = req.body.to;
+    let text = req.body.text;
+    let type = req.body.type;
+    const id = req.params.id;
+
+    const userSchema = joi.object({
+        to: joi.string().required(),
+        text: joi.string().required(),
+        type: joi.string().valid('message', 'private_message').required(),
+        from: joi.string().required()
+    });
+
+    const newMessage = {to, text, type, from: user};
+    const validation = userSchema.validate(newMessage);
+
+    if(validation.error){
+        return res.sendStatus(422);
+    }
+
+    newMessage.from = stripHtml(user).result.trim();
+    newMessage.to = stripHtml(to).result.trim();
+    newMessage.text = stripHtml(text).result.trim();
+    newMessage.type = stripHtml(type).result.trim();
+
+    try{
+        const message = await db.collection('messages').find({_id: new ObjectId(id)}).toArray();
+        if(message.length === 0) return res.sendStatus(404);
+        if(message[0].from !== user) return res.sendStatus(401);
+        await db.collection('messages').updateOne({_id: new ObjectId(id)}, {$set: newMessage});
+        res.sendStatus(204);
     }catch(err){
         res.sendStatus(500);
     }
