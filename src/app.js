@@ -26,7 +26,7 @@ try{
 }
 
 const db = mongoClient.db();
-/*
+
 setInterval(async () => {
     const timeLimit = Date.now() - 10000;
     const usersInactive = await db.collection('participants').find({lastStatus: {$lte: timeLimit}}).toArray()
@@ -48,7 +48,7 @@ setInterval(async () => {
         }
     }
     }, 15000)
-*/
+
 app.post('/participants', async (req, res) =>{
     let name  = req.body.name;
 
