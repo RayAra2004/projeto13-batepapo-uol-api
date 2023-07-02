@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import express, { json } from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import joi from 'joi';
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br.js";
@@ -50,8 +50,7 @@ setInterval(async () => {
     }, 15000)
 
 app.post('/participants', async (req, res) =>{
-    if(Object.keys(req.body).length === 0) return res.sendStatus(422);
-    const name  = stripHtml(req.body.name).result.trim();
+    let name  = req.body.name;
 
     const userSchema = joi.object({
         name: joi.string().required()
@@ -61,6 +60,7 @@ app.post('/participants', async (req, res) =>{
     if(validation.error){
         return res.sendStatus(422);
     }
+    name = stripHtml(name).result.trim();
 
     try{
         const userExist = await db.collection('participants').findOne({name: name});
@@ -185,10 +185,15 @@ app.post('/status', async (req, res) =>{
 });
 
 app.delete('/messages/:id', async (req, res) =>{
+    if((req.headers.user) === undefined) return res.sendStatus(422);
     const user = stripHtml(req.headers.user).result.trim();
     const id = stripHtml(req.params.id).result.trim();
     try{
-        const message = await db.collection('messages').find({_id: id}).toArray();
+        const message = await db.collection('messages').find({_id: new ObjectId(id)}).toArray();
+        if(message.length === 0) return res.sendStatus(404);
+        if(message[0].from !== user) return res.sendStatus(401);
+        console.log(message)
+        res.sendStatus(200)
     }catch(err){
         res.sendStatus(500);
     }
