@@ -26,7 +26,7 @@ try{
 }
 
 const db = mongoClient.db();
-
+/*
 setInterval(async () => {
     const timeLimit = Date.now() - 10000;
     const usersInactive = await db.collection('participants').find({lastStatus: {$lte: timeLimit}}).toArray()
@@ -48,7 +48,7 @@ setInterval(async () => {
         }
     }
     }, 15000)
-
+*/
 app.post('/participants', async (req, res) =>{
     let name  = req.body.name;
 
@@ -95,10 +95,10 @@ app.get('/participants', async (req, res) => {
 });
 
 app.post('/messages', async (req, res) => {
-    const user = stripHtml(req.headers.name).result.trim();
-    const to = stripHtml(req.body.to).result.trim();
-    const text = stripHtml(req.body.text).result.trim();
-    const type = stripHtml(req.body.type).result.trim();
+    let user = req.headers.user;
+    let to = req.body.to;
+    let text = req.body.text;
+    let type = req.body.type;
 
     const userSchema = joi.object({
         to: joi.string().required(),
@@ -108,14 +108,23 @@ app.post('/messages', async (req, res) => {
     });
 
     const newMessage = {to, text, type, from: user};
+    console.log(newMessage)
+    const validation = userSchema.validate(newMessage);
+
+    if(validation.error){
+        console.log(validation.error)
+        return res.sendStatus(422);
+    }
+
+    newMessage.from = stripHtml(user).result.trim();
+    newMessage.to = stripHtml(to).result.trim();
+    newMessage.text = stripHtml(text).result.trim();
+    newMessage.type = stripHtml(type).result.trim();
 
     try{
         const userDB = await db.collection('participants').findOne({name: user})
-        const validation = userSchema.validate(newMessage);
-
-        if(validation.error || !userDB){
-            return res.sendStatus(422);
-        }
+        if(!userDB) return res.sendStatus(422);
+      
         newMessage.time = dayjs().locale("pt").format("HH:mm:ss");
         await db.collection('messages').insertOne(newMessage);
     } catch(err){
@@ -192,13 +201,11 @@ app.delete('/messages/:id', async (req, res) =>{
         const message = await db.collection('messages').find({_id: new ObjectId(id)}).toArray();
         if(message.length === 0) return res.sendStatus(404);
         if(message[0].from !== user) return res.sendStatus(401);
-        console.log(message)
-        res.sendStatus(200)
+        await db.collection('messages').deleteOne({_id: new ObjectId(id)});
+        res.sendStatus(204)
     }catch(err){
         res.sendStatus(500);
     }
-    
-
-})
+});
 
 app.listen(PORT, ()=> console.log(`Servidor rondando na porta ${PORT}`));
