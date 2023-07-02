@@ -50,6 +50,7 @@ setInterval(async () => {
     }, 15000)
 
 app.post('/participants', async (req, res) =>{
+    if(Object.keys(req.body).length === 0) return res.sendStatus(422);
     const name  = stripHtml(req.body.name).result.trim();
 
     const userSchema = joi.object({
@@ -182,5 +183,17 @@ app.post('/status', async (req, res) =>{
         res.sendStatus(500);
     }
 });
+
+app.delete('/messages/:id', async (req, res) =>{
+    const user = stripHtml(req.headers.user).result.trim();
+    const id = stripHtml(req.params.id).result.trim();
+    try{
+        const message = await db.collection('messages').find({_id: id}).toArray();
+    }catch(err){
+        res.sendStatus(500);
+    }
+    
+
+})
 
 app.listen(PORT, ()=> console.log(`Servidor rondando na porta ${PORT}`));
