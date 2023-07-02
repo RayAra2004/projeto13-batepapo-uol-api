@@ -199,7 +199,7 @@ app.delete('/messages/:id', async (req, res) =>{
         if(message.length === 0) return res.sendStatus(404);
         if(message[0].from !== user) return res.sendStatus(401);
         await db.collection('messages').deleteOne({_id: new ObjectId(id)});
-        res.sendStatus(204)
+        res.sendStatus(200)
     }catch(err){
         res.sendStatus(500);
     }
@@ -236,7 +236,7 @@ app.put('/messages/:id', async (req, res) =>{
         if(message.length === 0) return res.sendStatus(404);
         if(message[0].from !== user) return res.sendStatus(401);
         await db.collection('messages').updateOne({_id: new ObjectId(id)}, {$set: newMessage});
-        res.sendStatus(204);
+        res.sendStatus(200);
     }catch(err){
         res.sendStatus(500);
     }
